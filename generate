@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if [ $# -eq 0 ]
+then
+  echo "Please supply at least one domain. Refer to https://github.com/StayPirate/mod_rewrite-Redirector for more information."
+  exit
+fi
+
+DOMAINS=""
+for domain in "$@"
+do
+  DOMAINS="$DOMAINS -d $domain"
+done
+
+certbot certonly -a nginx --dry-run --register-unsafely-without-email --agree-tos --non-interactive $DOMAINS
+
+cp -L /etc/letsencrypt/live/*/* /cert
