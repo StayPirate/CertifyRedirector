@@ -12,6 +12,6 @@ do
   DOMAINS="$DOMAINS -d $domain"
 done
 
-certbot certonly -a nginx --dry-run --register-unsafely-without-email --agree-tos --non-interactive $DOMAINS
+certbot certonly -a nginx --register-unsafely-without-email --agree-tos --non-interactive $DOMAINS
 
 cp -L /etc/letsencrypt/live/*/* /cert
