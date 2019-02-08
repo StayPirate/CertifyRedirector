@@ -1,16 +1,37 @@
 # Redirector's Certificate Generation
 
-### Why this image?
-This image is not intended to be a replacement for [Certbot](https://certbot.eff.org/) or other [ACME](https://ietf-wg-acme.github.io/acme/) clients in the wild. I created it to quickly generate and deploy certificates for Apache2 instances I use within other containers and act as redirectors in my C2 infrastructure. If you already using [mod_rewrite-Redirector](https://asd), you will find this image quite useful.
+This image is not intended to be a replacement for [Certbot](https://certbot.eff.org/) or any other [ACME](https://ietf-wg-acme.github.io/acme/) client in the wild. I created it to automatize the generation and deploy of HTTPS certificates for Apache2 instances I use within containers running [mod_rewrite-Redirector](https://github.com/StayPirate/mod_rewrite-Redirector) image.
 
-### Certificate Generation
-**To pass the verification step you have to run the container from the same machine pointed by the domains that you want to generate the certificate for. Moreover, you need to be able to bind the container to port 80 during the verification step.**
-In order to generate the certificate for your domain/domains, you just need to run the following command:
-```docker container run -v cert:/cert StayPirate/CertifyRedirector domain_1 domain_2 sub.domain_2```.
-You can specify one or as many domains you want, the output will be one certificate valid for all the domains which have successfully passed the verification steps. If you want a single certificate for each domain, please run the container different times. Be careful to not override certificates generated previously.
+### Generation & Validation
+This image is made to only work with [Let's Encrypt](https://letsencrypt.org/), if you need to use a different CA please generate and validate your certificate in a different way.  
+There are some few requirements to satisfy io order to successfully use this container:
+1. Having shell access to the machine.
+2. Having enough privileges to run Docker containers.
+3. Domian/s you want to certify already have to point the machine where you will run this container.
+4. Handling port 80 for few seconds. This container uses Certbot, hence it needs to handle port 80 during the authentication process. After that the port will be released.
 
-After you ran the above-mentioned command, a new volume named `cert` is created and managed the Docker daemon. It will still be available even if you remove the container which has created it. Except if you use the flag `-v` in `docker container rm -v conatiner_name`. In this case, the volume will be deleted along with its content.
+Keep in mind: **In order to pass the verification steps you have to run the container from the same machine pointed by the domain/s you want to generate the certificate for. Moreover, you need to be able to bind the container to port 80 during its execution.**  
 
-### Using the certificate
-After you properly ran this image within a container, the certificate will be stored in a volume named `cert`. You can use this volume with other containers, as long as they use the same format and pathnames used here for their certificates. In order to do that, at the creation time of the new container, you need to mount this same volume. For instance using [mod_rewrite-Redirector](https://asd) image: 
-```docker container run -p 443:8000 -v $(pwd)/htaccess:/var/www/html/.htaccess -v cert:/cert StayPirate/mod_rewrite-Redirector```
+---
+### How to use
+To generate the certificate for example.com use the following command:  
+`docker container run --rm -v cert:/cert -p 80:80 StayPirate/CertifyRedirector example.com`  
+
+As you can see, we created a named volume `cert` to map the container's internal directory `/cert`. This last one, is the directory where the certificates are copied if a successfull validation is done. In this way, after the execution, we end up with our certificates inside the Docker managed volume called `cert`, while the container will be automatically deleted by the option `--rm`. We can now re-use this volume with other containers, for example with a [mod_rewrite-Redirector](https://github.com/StayPirate/mod_rewrite-Redirector) based one.
+
+##### Many domains on one-shot
+In case you want generate a certificate valid for more than one domain, and assuming that all of these are already pointing to the machine you are going to use, you just need to append all the domains to the previous command line.  
+For instance, if you want to validate `example.com`, `example-2.com` and `sub.example.com`:  
+`docker container run --rm -v more-cert:/cert -p 80:80 StayPirate/CertifyRedirector example.com example-2.com sub.example.com`.  
+If validation was succefull you will find the certificate inside a new volume named `more-cert`. Keep in mind that only one valid certificate will be generated for all the specified domains. If you want a different certificate for each domain please run the container different times, paying attenction to not override previous generated certificate.  
+
+Use `docker volume ls` to track the volumes you created.  
+If you don't want to use named volume, you can store certificates in a host system directory replacing volume options with something like `-v $(pwd)/certificate/:/cert`.
+
+### Output
+To permit the interoperability with other containers, I use the following name convention for the generated certificates:
+ - **privkey.pem** - Private key for the certificate (Apache: [SSLCertificateKeyFile](https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslcertificatekeyfile) - Nignx: [ssl_certificate_key](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate_key)).
+ - **fullchain.pem** - All certificates, including server certificate (aka leaf certificate or end-entity certificate) for your domain/s name (Apache >= 2.4.8: [SSLCertificateFile](https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslcertificatefile) - Nginx: [ssl_certificate](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_certificate)). 
+
+### What next?
+ When you successfully ran this image within a container you will find the certificate stored in a volume named `cert`. You can now map this volume to other containers, as long as other containers respect the same name convention mentioned above. Or if have ran the container only to generate the certificates, then use them as you prefer.
