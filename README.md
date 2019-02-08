@@ -15,14 +15,14 @@ Keep in mind: **In order to pass the verification steps you have to run the cont
 ---
 ### How to use
 To generate the certificate for example.com use the following command:  
-`docker container run --rm -v cert:/cert -p 80:80 StayPirate/CertifyRedirector example.com`  
+`docker container run --rm -v cert:/cert -p 80:80 tuxmealux/certify-redirector example.com`  
 
 As you can see, we created a named volume `cert` to map the container's internal directory `/cert`. This last one, is the directory where the certificates are copied if a successfull validation is done. In this way, after the execution, we end up with our certificates inside the Docker managed volume called `cert`, while the container will be automatically deleted by the option `--rm`. We can now re-use this volume with other containers, for example with a [mod_rewrite-Redirector](https://github.com/StayPirate/mod_rewrite-Redirector) based one.
 
 ##### Many domains on one-shot
 In case you want generate a certificate valid for more than one domain, and assuming that all of these are already pointing to the machine you are going to use, you just need to append all the domains to the previous command line.  
 For instance, if you want to validate `example.com`, `example-2.com` and `sub.example.com`:  
-`docker container run --rm -v more-cert:/cert -p 80:80 StayPirate/CertifyRedirector example.com example-2.com sub.example.com`.  
+`docker container run --rm -v more-cert:/cert -p 80:80 tuxmealux/certify-redirector example.com example-2.com sub.example.com`.  
 If validation was succefull you will find the certificate inside a new volume named `more-cert`. Keep in mind that only one valid certificate will be generated for all the specified domains. If you want a different certificate for each domain please run the container different times, paying attenction to not override previous generated certificate.  
 
 Use `docker volume ls` to track the volumes you created.  
